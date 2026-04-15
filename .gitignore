@@ -75,6 +75,7 @@ Thumbs.db
 ##########################################
 *.cfg
 *.ini
+!migrations/alembic.ini
 .env*
 
 
