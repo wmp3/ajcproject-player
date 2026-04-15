@@ -22,7 +22,7 @@ cp .env.example .env   # edit DATABASE_URL if needed
 
 export FLASK_APP=app.py
 flask db upgrade           # apply migrations
-flask build-db --limit 50  # seed a small subset for testing (drop --limit for all ~2,121)
+flask build-db --limit 50  # seed a small subset for testing (drop --limit for all items)
 
 flask run                  # http://localhost:5000
 ```
