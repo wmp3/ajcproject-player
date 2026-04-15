@@ -1,5 +1,6 @@
 import os
 import random
+from datetime import datetime
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template
@@ -7,6 +8,19 @@ from flask_migrate import Migrate
 from sqlalchemy import func, select
 
 from models import Item, db
+
+
+def format_date(raw):
+    """Render archive.org date strings as 'August 27, 1992'."""
+    if not raw:
+        return ""
+    stem = raw[:10]
+    for fmt, out in (("%Y-%m-%d", "%B %-d, %Y"), ("%Y-%m", "%B %Y"), ("%Y", "%Y")):
+        try:
+            return datetime.strptime(stem[: len(fmt) + 2], fmt).strftime(out)
+        except ValueError:
+            continue
+    return raw
 
 load_dotenv()
 
@@ -23,6 +37,9 @@ def create_app() -> Flask:
 
     db.init_app(app)
     Migrate(app, db)
+
+    from build_db import build_db_command
+    app.cli.add_command(build_db_command)
 
     @app.route("/")
     def index():
@@ -41,17 +58,16 @@ def create_app() -> Flask:
             return jsonify({"error": "no tracks in database"}), 404
 
         file_entry = random.choice(item.files)
-        track_index = item.files.index(file_entry) + 1
 
         return jsonify({
             "identifier": item.identifier,
             "artist": item.creator or "Unknown Artist",
-            "date": item.date or "",
+            "date": format_date(item.date),
             "venue": item.venue or "",
             "title": item.title or "",
             "track_title": file_entry.get("title") or file_entry["name"],
-            "track_index": track_index,
-            "embed_url": f"https://archive.org/embed/{item.identifier}?playlist=1&track={track_index}",
+            "audio_url": f"https://archive.org/download/{item.identifier}/{file_entry['name']}",
+            "details_url": f"https://archive.org/details/{item.identifier}",
         })
 
     return app
