@@ -22,6 +22,7 @@ def format_date(raw):
             continue
     return raw
 
+
 load_dotenv()
 
 
@@ -29,7 +30,9 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.secret_key = os.environ.get("FLASK_SECRET", "dev")
 
-    database_url = os.environ.get("DATABASE_URL", "postgresql://localhost:5432/ajcproject")
+    database_url = os.environ.get(
+        "DATABASE_URL", "postgresql://localhost:5432/ajcproject"
+    )
     if database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
@@ -39,6 +42,7 @@ def create_app() -> Flask:
     Migrate(app, db)
 
     from build_db import build_db_command
+
     app.cli.add_command(build_db_command)
 
     @app.route("/")
@@ -59,16 +63,18 @@ def create_app() -> Flask:
 
         file_entry = random.choice(item.files)
 
-        return jsonify({
-            "identifier": item.identifier,
-            "artist": item.creator or "Unknown Artist",
-            "date": format_date(item.date),
-            "venue": item.venue or "",
-            "title": item.title or "",
-            "track_title": file_entry.get("title") or file_entry["name"],
-            "audio_url": f"https://archive.org/download/{item.identifier}/{file_entry['name']}",
-            "details_url": f"https://archive.org/details/{item.identifier}",
-        })
+        return jsonify(
+            {
+                "identifier": item.identifier,
+                "artist": item.creator or "Unknown Artist",
+                "date": format_date(item.date),
+                "venue": item.venue or "",
+                "title": item.title or "",
+                "track_title": file_entry.get("title") or file_entry["name"],
+                "audio_url": f"https://archive.org/download/{item.identifier}/{file_entry['name']}",
+                "details_url": f"https://archive.org/details/{item.identifier}",
+            }
+        )
 
     return app
 

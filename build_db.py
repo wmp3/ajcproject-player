@@ -8,6 +8,7 @@ Registered as a Flask CLI command:
 
 Idempotent: re-running updates rows via ON CONFLICT.
 """
+
 import re
 import sys
 import time
@@ -70,12 +71,14 @@ def fetch_files(http, identifier):
         fmt = (f.get("format") or "").upper()
         name = f.get("name", "")
         if "MP3" in fmt and name.lower().endswith(".mp3"):
-            files.append({
-                "name": name,
-                "title": f.get("title") or name,
-                "track": f.get("track"),
-                "length": f.get("length"),
-            })
+            files.append(
+                {
+                    "name": name,
+                    "title": f.get("title") or name,
+                    "track": f.get("track"),
+                    "length": f.get("length"),
+                }
+            )
     files.sort(key=lambda x: x["name"])
     return files
 
@@ -84,7 +87,10 @@ def upsert(rows):
     stmt = insert(Item).values(rows)
     stmt = stmt.on_conflict_do_update(
         index_elements=["identifier"],
-        set_={c: stmt.excluded[c] for c in ("title", "creator", "date", "venue", "description", "files")},
+        set_={
+            c: stmt.excluded[c]
+            for c in ("title", "creator", "date", "venue", "description", "files")
+        },
     )
     db.session.execute(stmt)
     db.session.commit()
@@ -92,8 +98,16 @@ def upsert(rows):
 
 @click.command("build-db")
 @click.option("--limit", type=int, default=None, help="Only process first N items")
-@click.option("--batch", type=int, default=25, show_default=True, help="DB commit batch size")
-@click.option("--sleep", type=float, default=0.05, show_default=True, help="Seconds between metadata calls")
+@click.option(
+    "--batch", type=int, default=25, show_default=True, help="DB commit batch size"
+)
+@click.option(
+    "--sleep",
+    type=float,
+    default=0.05,
+    show_default=True,
+    help="Seconds between metadata calls",
+)
 @with_appcontext
 def build_db_command(limit, batch, sleep):
     """Scrape the aadamjacobs collection and upsert into the items table."""
@@ -111,15 +125,17 @@ def build_db_command(limit, batch, sleep):
             continue
 
         title = first(meta.get("title"))
-        pending.append({
-            "identifier": ident,
-            "title": title,
-            "creator": first(meta.get("creator")),
-            "date": first(meta.get("date")),
-            "venue": parse_venue(title),
-            "description": first(meta.get("description")),
-            "files": files,
-        })
+        pending.append(
+            {
+                "identifier": ident,
+                "title": title,
+                "creator": first(meta.get("creator")),
+                "date": first(meta.get("date")),
+                "venue": parse_venue(title),
+                "description": first(meta.get("description")),
+                "files": files,
+            }
+        )
         processed += 1
         click.echo(f"[{processed}] {ident} ({len(files)} mp3)")
 
