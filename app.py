@@ -1,9 +1,10 @@
+import calendar
 import os
 import random
 from datetime import datetime
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 from flask_migrate import Migrate
 from sqlalchemy import func, select
 
@@ -21,6 +22,22 @@ def format_date(raw):
         except ValueError:
             continue
     return raw
+
+
+def pad_date(raw, *, end):
+    """Pad a partial date ('YYYY' or 'YYYY-MM') to full 'YYYY-MM-DD'."""
+    if not raw:
+        return None
+    stem = raw[:10]
+    if len(stem) == 4:
+        return f"{stem}-12-31" if end else f"{stem}-01-01"
+    if len(stem) == 7:
+        if end:
+            year, month = int(stem[:4]), int(stem[5:7])
+            last_day = calendar.monthrange(year, month)[1]
+            return f"{stem}-{last_day:02d}"
+        return f"{stem}-01"
+    return stem
 
 
 load_dotenv()
@@ -49,13 +66,49 @@ def create_app() -> Flask:
     def index():
         return render_template("index.html")
 
+    @app.route("/api/bounds")
+    def date_bounds():
+        min_raw, max_raw = db.session.execute(
+            select(func.min(Item.date), func.max(Item.date)).where(
+                Item.date.isnot(None), Item.date != ""
+            )
+        ).one()
+        return jsonify(
+            {
+                "min_date": pad_date(min_raw, end=False),
+                "max_date": pad_date(max_raw, end=True),
+            }
+        )
+
+    @app.route("/api/venues")
+    def venues():
+        rows = (
+            db.session.execute(
+                select(Item.venue)
+                .where(Item.venue.isnot(None), Item.venue != "")
+                .distinct()
+                .order_by(Item.venue)
+            )
+            .scalars()
+            .all()
+        )
+        return jsonify({"venues": rows})
+
     @app.route("/api/random")
     def random_track():
+        start = request.args.get("start")
+        end = request.args.get("end")
+        venue = request.args.get("venue")
+        date_prefix = func.substring(Item.date, 1, 10)
+        query = select(Item).where(func.jsonb_array_length(Item.files) > 0)
+        if start:
+            query = query.where(date_prefix >= start)
+        if end:
+            query = query.where(date_prefix <= end)
+        if venue:
+            query = query.where(Item.venue == venue)
         item = db.session.execute(
-            select(Item)
-            .where(func.jsonb_array_length(Item.files) > 0)
-            .order_by(func.random())
-            .limit(1)
+            query.order_by(func.random()).limit(1)
         ).scalar_one_or_none()
 
         if item is None:

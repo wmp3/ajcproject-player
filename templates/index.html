@@ -121,6 +121,62 @@
       margin-top: 0.9rem;
     }
 
+    #filters {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .filter-group {
+      text-align: center;
+    }
+
+    .filter-caption {
+      font-size: 0.8rem;
+      color: var(--accent-4);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    #date-range {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    #date-range label {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.75rem;
+      color: var(--accent-4);
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    #date-range input[type="date"],
+    #venue-select {
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.5rem 0.75rem;
+      border: 1.5px solid var(--contrast);
+      border-radius: 8px;
+      background: var(--base);
+      color: var(--contrast);
+      margin-top: 0.3rem;
+    }
+
+    #venue-select {
+      min-width: 220px;
+      max-width: 100%;
+    }
+
     #player {
       width: 100%;
       margin-top: 0.5rem;
@@ -197,6 +253,26 @@
       alt="A Mad Undertaking logo">
   </a>
   <h1>aadam jacobs collection</h1>
+  <div id="filters">
+    <div class="filter-group">
+      <div class="filter-caption">Publication Date</div>
+      <div id="date-range">
+        <label>From
+          <input type="date" id="start-date">
+        </label>
+        <label>To
+          <input type="date" id="end-date">
+        </label>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label class="venue-label">
+        <select id="venue-select">
+          <option value="">All venues</option>
+        </select>
+      </label>
+    </div>
+  </div>
   <button id="surprise">Surprise Me</button>
   <div id="stage">
     <div id="meta">
@@ -215,12 +291,52 @@
     const player = document.getElementById('player');
     const details = document.getElementById('details');
     const err = document.getElementById('error');
+    const startInput = document.getElementById('start-date');
+    const endInput = document.getElementById('end-date');
+    const venueSelect = document.getElementById('venue-select');
+
+    async function loadVenues() {
+      try {
+        const r = await fetch('/api/venues', { cache: 'no-store' });
+        if (!r.ok) return;
+        const { venues } = await r.json();
+        for (const v of venues) {
+          const opt = document.createElement('option');
+          opt.value = v;
+          opt.textContent = v;
+          venueSelect.appendChild(opt);
+        }
+      } catch { }
+    }
+
+    async function loadBounds() {
+      try {
+        const r = await fetch('/api/bounds', { cache: 'no-store' });
+        if (!r.ok) return;
+        const { min_date, max_date } = await r.json();
+        if (min_date) {
+          startInput.min = min_date;
+          startInput.max = max_date;
+          startInput.value = min_date;
+        }
+        if (max_date) {
+          endInput.min = min_date;
+          endInput.max = max_date;
+          endInput.value = max_date;
+        }
+      } catch { }
+    }
 
     async function loadRandom() {
       btn.disabled = true;
       err.textContent = '';
       try {
-        const r = await fetch('/api/random', { cache: 'no-store' });
+        const params = new URLSearchParams();
+        if (startInput.value) params.set('start', startInput.value);
+        if (endInput.value) params.set('end', endInput.value);
+        if (venueSelect.value) params.set('venue', venueSelect.value);
+        const qs = params.toString();
+        const r = await fetch(`/api/random${qs ? '?' + qs : ''}`, { cache: 'no-store' });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const t = await r.json();
         console.log('random track:', t);
@@ -245,6 +361,8 @@
 
     btn.addEventListener('click', loadRandom);
     player.addEventListener('ended', loadRandom);
+    loadBounds();
+    loadVenues();
   </script>
 </body>
 
