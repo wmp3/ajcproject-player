@@ -122,10 +122,11 @@
     }
 
     #filters {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      align-items: center;
+      display: grid;
+      grid-template-columns: repeat(2, auto);
+      gap: 0.75rem 2rem;
+      justify-content: center;
+      align-items: start;
       margin-bottom: 1.25rem;
     }
 
@@ -246,6 +247,11 @@
         height: 48px;
       }
 
+      #filters {
+        grid-template-columns: 1fr;
+        justify-items: center;
+      }
+
       .venue-label {
         display: block;
         width: 100%;
@@ -255,8 +261,6 @@
       #creator-input {
         min-width: 0;
         width: 100%;
-        font-size: 0.85rem;
-        padding: 0.5rem 0.6rem;
       }
 
       .filter-group {
@@ -275,14 +279,16 @@
   <h1>aadam jacobs collection</h1>
   <div id="filters">
     <div class="filter-group">
+      <div class="filter-caption">Creator</div>
       <label class="venue-label">
-        <input type="text" id="creator-input" list="creator-options" placeholder="All creators — search to filter" autocomplete="off">
+        <input type="text" id="creator-input" list="creator-options" placeholder="Search to filter" autocomplete="off">
         <datalist id="creator-options"></datalist>
       </label>
     </div>
     <div class="filter-group">
+      <div class="filter-caption">Venue</div>
       <label class="venue-label">
-        <input type="text" id="venue-input" list="venue-options" placeholder="All venues — search to filter" autocomplete="off">
+        <input type="text" id="venue-input" list="venue-options" placeholder="Search to filter" autocomplete="off">
         <datalist id="venue-options"></datalist>
       </label>
     </div>
