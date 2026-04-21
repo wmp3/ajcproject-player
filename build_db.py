@@ -43,7 +43,7 @@ def parse_venue(title):
 
 def scrape_identifiers(http):
     cursor = None
-    fields = "identifier,title,creator,date,description"
+    fields = "identifier,title,creator,date,addeddate,description"
     while True:
         params = {
             "q": f"collection:{COLLECTION} AND mediatype:audio",
@@ -89,7 +89,15 @@ def upsert(rows):
         index_elements=["identifier"],
         set_={
             c: stmt.excluded[c]
-            for c in ("title", "creator", "date", "venue", "description", "files")
+            for c in (
+                "title",
+                "creator",
+                "publication_date",
+                "added_date",
+                "venue",
+                "description",
+                "files",
+            )
         },
     )
     db.session.execute(stmt)
@@ -130,7 +138,8 @@ def build_db_command(limit, batch, sleep):
                 "identifier": ident,
                 "title": title,
                 "creator": first(meta.get("creator")),
-                "date": first(meta.get("date")),
+                "publication_date": first(meta.get("date")),
+                "added_date": first(meta.get("addeddate")),
                 "venue": parse_venue(title),
                 "description": first(meta.get("description")),
                 "files": files,

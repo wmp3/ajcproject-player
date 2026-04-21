@@ -139,10 +139,10 @@
       font-weight: 600;
       letter-spacing: 0.02em;
       text-transform: uppercase;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.05rem;
     }
 
-    #date-range {
+    .date-range {
       display: flex;
       gap: 0.75rem;
       align-items: flex-end;
@@ -150,7 +150,7 @@
       justify-content: center;
     }
 
-    #date-range label {
+    .date-range label {
       display: flex;
       flex-direction: column;
       font-size: 0.75rem;
@@ -160,8 +160,9 @@
       text-transform: uppercase;
     }
 
-    #date-range input[type="date"],
-    #venue-select {
+    .date-range input[type="date"],
+    #venue-input,
+    #creator-input {
       font-family: inherit;
       font-size: 1rem;
       padding: 0.5rem 0.75rem;
@@ -172,8 +173,9 @@
       margin-top: 0.3rem;
     }
 
-    #venue-select {
-      min-width: 220px;
+    #venue-input,
+    #creator-input {
+      min-width: 260px;
       max-width: 100%;
     }
 
@@ -255,8 +257,20 @@
   <h1>aadam jacobs collection</h1>
   <div id="filters">
     <div class="filter-group">
+      <label class="venue-label">
+        <input type="text" id="creator-input" list="creator-options" placeholder="All creators — search to filter" autocomplete="off">
+        <datalist id="creator-options"></datalist>
+      </label>
+    </div>
+    <div class="filter-group">
+      <label class="venue-label">
+        <input type="text" id="venue-input" list="venue-options" placeholder="All venues — search to filter" autocomplete="off">
+        <datalist id="venue-options"></datalist>
+      </label>
+    </div>
+    <div class="filter-group">
       <div class="filter-caption">Publication Date</div>
-      <div id="date-range">
+      <div class="date-range">
         <label>From
           <input type="date" id="start-date">
         </label>
@@ -266,11 +280,15 @@
       </div>
     </div>
     <div class="filter-group">
-      <label class="venue-label">
-        <select id="venue-select">
-          <option value="">All venues</option>
-        </select>
-      </label>
+      <div class="filter-caption">Added Date</div>
+      <div class="date-range">
+        <label>From
+          <input type="date" id="added-start-date">
+        </label>
+        <label>To
+          <input type="date" id="added-end-date">
+        </label>
+      </div>
     </div>
   </div>
   <button id="surprise">Surprise Me</button>
@@ -293,37 +311,48 @@
     const err = document.getElementById('error');
     const startInput = document.getElementById('start-date');
     const endInput = document.getElementById('end-date');
-    const venueSelect = document.getElementById('venue-select');
+    const addedStartInput = document.getElementById('added-start-date');
+    const addedEndInput = document.getElementById('added-end-date');
+    const venueInput = document.getElementById('venue-input');
+    const venueOptions = document.getElementById('venue-options');
+    const creatorInput = document.getElementById('creator-input');
+    const creatorOptions = document.getElementById('creator-options');
 
-    async function loadVenues() {
+    async function loadList(url, key, datalistEl) {
       try {
-        const r = await fetch('/api/venues', { cache: 'no-store' });
+        const r = await fetch(url, { cache: 'no-store' });
         if (!r.ok) return;
-        const { venues } = await r.json();
-        for (const v of venues) {
+        const data = await r.json();
+        for (const v of data[key]) {
           const opt = document.createElement('option');
           opt.value = v;
-          opt.textContent = v;
-          venueSelect.appendChild(opt);
+          datalistEl.appendChild(opt);
         }
       } catch { }
+    }
+
+    function applyBounds(fromInput, toInput, bounds) {
+      if (!bounds) return;
+      const { min_date, max_date } = bounds;
+      if (min_date) {
+        fromInput.min = min_date;
+        fromInput.max = max_date;
+        fromInput.value = min_date;
+      }
+      if (max_date) {
+        toInput.min = min_date;
+        toInput.max = max_date;
+        toInput.value = max_date;
+      }
     }
 
     async function loadBounds() {
       try {
         const r = await fetch('/api/bounds', { cache: 'no-store' });
         if (!r.ok) return;
-        const { min_date, max_date } = await r.json();
-        if (min_date) {
-          startInput.min = min_date;
-          startInput.max = max_date;
-          startInput.value = min_date;
-        }
-        if (max_date) {
-          endInput.min = min_date;
-          endInput.max = max_date;
-          endInput.value = max_date;
-        }
+        const { publication, added } = await r.json();
+        applyBounds(startInput, endInput, publication);
+        applyBounds(addedStartInput, addedEndInput, added);
       } catch { }
     }
 
@@ -334,7 +363,10 @@
         const params = new URLSearchParams();
         if (startInput.value) params.set('start', startInput.value);
         if (endInput.value) params.set('end', endInput.value);
-        if (venueSelect.value) params.set('venue', venueSelect.value);
+        if (addedStartInput.value) params.set('added_start', addedStartInput.value);
+        if (addedEndInput.value) params.set('added_end', addedEndInput.value);
+        if (venueInput.value.trim()) params.set('venue', venueInput.value.trim());
+        if (creatorInput.value.trim()) params.set('creator', creatorInput.value.trim());
         const qs = params.toString();
         const r = await fetch(`/api/random${qs ? '?' + qs : ''}`, { cache: 'no-store' });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -362,7 +394,8 @@
     btn.addEventListener('click', loadRandom);
     player.addEventListener('ended', loadRandom);
     loadBounds();
-    loadVenues();
+    loadList('/api/venues', 'venues', venueOptions);
+    loadList('/api/creators', 'creators', creatorOptions);
   </script>
 </body>
 

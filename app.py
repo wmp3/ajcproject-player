@@ -66,47 +66,69 @@ def create_app() -> Flask:
     def index():
         return render_template("index.html")
 
-    @app.route("/api/bounds")
-    def date_bounds():
+    def _column_bounds(column):
         min_raw, max_raw = db.session.execute(
-            select(func.min(Item.date), func.max(Item.date)).where(
-                Item.date.isnot(None), Item.date != ""
+            select(func.min(column), func.max(column)).where(
+                column.isnot(None), column != ""
             )
         ).one()
+        return {
+            "min_date": pad_date(min_raw, end=False),
+            "max_date": pad_date(max_raw, end=True),
+        }
+
+    @app.route("/api/bounds")
+    def date_bounds():
         return jsonify(
             {
-                "min_date": pad_date(min_raw, end=False),
-                "max_date": pad_date(max_raw, end=True),
+                "publication": _column_bounds(Item.publication_date),
+                "added": _column_bounds(Item.added_date),
             }
         )
 
-    @app.route("/api/venues")
-    def venues():
-        rows = (
+    def _distinct_values(column):
+        return (
             db.session.execute(
-                select(Item.venue)
-                .where(Item.venue.isnot(None), Item.venue != "")
+                select(column)
+                .where(column.isnot(None), column != "")
                 .distinct()
-                .order_by(Item.venue)
+                .order_by(column)
             )
             .scalars()
             .all()
         )
-        return jsonify({"venues": rows})
+
+    @app.route("/api/venues")
+    def venues():
+        return jsonify({"venues": _distinct_values(Item.venue)})
+
+    @app.route("/api/creators")
+    def creators():
+        return jsonify({"creators": _distinct_values(Item.creator)})
 
     @app.route("/api/random")
     def random_track():
         start = request.args.get("start")
         end = request.args.get("end")
+        added_start = request.args.get("added_start")
+        added_end = request.args.get("added_end")
         venue = request.args.get("venue")
-        date_prefix = func.substring(Item.date, 1, 10)
+        creator = request.args.get("creator")
+        pub_prefix = func.substring(Item.publication_date, 1, 10)
+        added_prefix = func.substring(Item.added_date, 1, 10)
         query = select(Item).where(func.jsonb_array_length(Item.files) > 0)
         if start:
-            query = query.where(date_prefix >= start)
+            query = query.where(pub_prefix >= start)
         if end:
-            query = query.where(date_prefix <= end)
+            query = query.where(pub_prefix <= end)
+        if added_start:
+            query = query.where(added_prefix >= added_start)
+        if added_end:
+            query = query.where(added_prefix <= added_end)
         if venue:
             query = query.where(Item.venue == venue)
+        if creator:
+            query = query.where(Item.creator == creator)
         item = db.session.execute(
             query.order_by(func.random()).limit(1)
         ).scalar_one_or_none()
@@ -120,7 +142,7 @@ def create_app() -> Flask:
             {
                 "identifier": item.identifier,
                 "artist": item.creator or "Unknown Artist",
-                "date": format_date(item.date),
+                "date": format_date(item.publication_date),
                 "venue": item.venue or "",
                 "title": item.title or "",
                 "track_title": file_entry.get("title") or file_entry["name"],
