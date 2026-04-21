@@ -393,7 +393,12 @@
         if (creatorInput.value.trim()) params.set('creator', creatorInput.value.trim());
         const qs = params.toString();
         const r = await fetch(`/api/random${qs ? '?' + qs : ''}`, { cache: 'no-store' });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (r.status === 404) {
+          throw new Error("No tracks match those filters. Try widening your search.");
+        }
+        if (!r.ok) {
+          throw new Error("Something went wrong loading a track. Please try again.");
+        }
         const t = await r.json();
         console.log('random track:', t);
         meta.querySelector('.artist').textContent = t.artist;
@@ -409,7 +414,7 @@
         details.href = t.details_url;
         details.style.display = 'block';
       } catch (e) {
-        err.textContent = `Could not load a track: ${e.message}`;
+        err.textContent = e.message;
       } finally {
         btn.disabled = false;
       }

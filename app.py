@@ -6,7 +6,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 from flask_migrate import Migrate
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from models import Item, db
 
@@ -122,9 +122,13 @@ def create_app() -> Flask:
         if end:
             query = query.where(pub_prefix <= end)
         if added_start:
-            query = query.where(added_prefix >= added_start)
+            query = query.where(
+                or_(Item.added_date.is_(None), added_prefix >= added_start)
+            )
         if added_end:
-            query = query.where(added_prefix <= added_end)
+            query = query.where(
+                or_(Item.added_date.is_(None), added_prefix <= added_end)
+            )
         if venue:
             query = query.where(Item.venue == venue)
         if creator:
