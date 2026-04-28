@@ -147,6 +147,7 @@ def create_app() -> Flask:
                 "identifier": item.identifier,
                 "artist": item.creator or "Unknown Artist",
                 "date": format_date(item.publication_date),
+                "added_date": format_date(item.added_date),
                 "venue": item.venue or "",
                 "title": item.title or "",
                 "track_title": file_entry.get("title") or file_entry["name"],

@@ -185,9 +185,15 @@
       margin-top: 0.5rem;
     }
 
+    #added {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--accent-4);
+    }
+
     #details {
       display: block;
-      margin-top: 1rem;
+      margin-top: 0.5rem;
       font-size: 0.85rem;
       color: var(--accent-3);
       text-decoration: none;
@@ -201,7 +207,13 @@
 
     #error {
       color: #b00020;
-      margin-top: 1rem;
+      margin-top: 1.5rem;
+      text-align: center;
+      width: min(900px, 100%);
+    }
+
+    #error:empty {
+      display: none;
     }
 
     #player {
@@ -239,6 +251,7 @@
         font-size: 1.05rem;
       }
 
+      #added,
       #details {
         font-size: 1rem;
       }
@@ -316,6 +329,7 @@
     </div>
   </div>
   <button id="surprise">Surprise Me</button>
+  <div id="error"></div>
   <div id="stage">
     <div id="meta">
       <div class="artist"></div>
@@ -324,13 +338,14 @@
       <div class="track"></div>
     </div>
     <audio id="player" controls style="display:none"></audio>
+    <div id="added" style="display:none"></div>
     <a id="details" href="#" target="_blank" rel="noopener" style="display:none">View on archive.org →</a>
-    <div id="error"></div>
   </div>
   <script>
     const btn = document.getElementById('surprise');
     const meta = document.getElementById('meta');
     const player = document.getElementById('player');
+    const added = document.getElementById('added');
     const details = document.getElementById('details');
     const err = document.getElementById('error');
     const startInput = document.getElementById('start-date');
@@ -411,6 +426,12 @@
         player.load();
         player.style.display = 'block';
         player.play().catch(() => { });
+        if (t.added_date) {
+          added.textContent = `Added to archive on ${t.added_date}`;
+          added.style.display = 'block';
+        } else {
+          added.style.display = 'none';
+        }
         details.href = t.details_url;
         details.style.display = 'block';
       } catch (e) {
