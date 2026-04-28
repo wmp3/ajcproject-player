@@ -5,6 +5,7 @@ Registered as a Flask CLI command:
     flask build-db                 # full run (~2,121 items)
     flask build-db --limit 50      # smoke test
     flask build-db --batch 50      # larger commit batches
+    flask build-db --fresh         # wipe items table first, then rebuild
 
 Idempotent: re-running updates rows via ON CONFLICT.
 """
@@ -116,9 +117,25 @@ def upsert(rows):
     show_default=True,
     help="Seconds between metadata calls",
 )
+@click.option(
+    "--fresh",
+    is_flag=True,
+    help="Truncate the items table before rebuilding (clears stale/bad rows).",
+)
+@click.option("--yes", is_flag=True, help="Skip the --fresh confirmation prompt.")
 @with_appcontext
-def build_db_command(limit, batch, sleep):
+def build_db_command(limit, batch, sleep, fresh, yes):
     """Scrape the aadamjacobs collection and upsert into the items table."""
+    if fresh:
+        if not yes:
+            click.confirm(
+                f"This will TRUNCATE the {Item.__tablename__} table. Continue?",
+                abort=True,
+            )
+        click.echo("Truncating items table...")
+        db.session.execute(db.text(f"TRUNCATE TABLE {Item.__tablename__}"))
+        db.session.commit()
+
     http = requests.Session()
     http.headers["User-Agent"] = "ajcproject-player/0.1"
 
