@@ -394,9 +394,15 @@
       } catch { }
     }
 
-    async function loadRandom() {
+    const MAX_SKIP_ATTEMPTS = 5;
+    let skipAttempts = 0;
+
+    async function loadRandom(isSkip = false) {
       btn.disabled = true;
-      err.textContent = '';
+      if (!isSkip) {
+        skipAttempts = 0;
+        err.textContent = '';
+      }
       try {
         const params = new URLSearchParams();
         if (startInput.value) params.set('start', startInput.value);
@@ -440,8 +446,18 @@
       }
     }
 
-    btn.addEventListener('click', loadRandom);
-    player.addEventListener('ended', loadRandom);
+    btn.addEventListener('click', () => loadRandom(false));
+    player.addEventListener('ended', () => loadRandom(false));
+    player.addEventListener('error', () => {
+      if (!player.src) return;
+      skipAttempts += 1;
+      if (skipAttempts > MAX_SKIP_ATTEMPTS) {
+        err.textContent = "Couldn't find a playable track after several tries. Try widening your filters.";
+        return;
+      }
+      err.textContent = 'Track unavailable, skipping…';
+      loadRandom(true);
+    });
     loadBounds();
     loadList('/api/venues', 'venues', venueOptions);
     loadList('/api/creators', 'creators', creatorOptions);
